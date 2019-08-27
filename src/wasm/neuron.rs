@@ -2,11 +2,11 @@ use rand::Rng;
 use std::option::Option;
 
 pub struct Neuron {
-    weights: Vec<f64>,
+    pub weights: Vec<f64>,
 }
 
 impl Neuron {
-    pub fn new(number_of_inputs: i32) -> Self {
+    pub fn new(number_of_inputs: u32) -> Self {
         let mut weights: Vec<f64> = vec![];
 
         for _ in 0..number_of_inputs {
@@ -16,7 +16,7 @@ impl Neuron {
         Self { weights }
     }
 
-    pub fn feed_forward(&self, inputs: &Vec<f64>, activate: &Fn(f64) -> f64) -> Option<f64> {
+    pub fn feed_forward(&self, inputs: &Vec<f64>, activate: &dyn Fn(f64) -> f64) -> Option<f64> {
         if inputs.len() != self.weights.len() {
             return None;
         }

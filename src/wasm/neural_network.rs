@@ -1,3 +1,4 @@
+use crate::functions::{activation, loss};
 use crate::neuron::Neuron;
 use std::option::Option;
 
@@ -41,12 +42,16 @@ impl NeuralNetwork {
 
             for (neuron_index, neuron) in layer_neurons.iter().enumerate() {
                 let output = if layer_index == 0 {
-                    neuron.feed_forward(&vec![next_inputs[neuron_index]])
+                    neuron
+                        .feed_forward(&vec![next_inputs[neuron_index]], &activation::sigmoid)
+                        .unwrap()
                 } else {
-                    neuron.feed_forward(&next_inputs)
+                    neuron
+                        .feed_forward(&next_inputs, &activation::sigmoid)
+                        .unwrap()
                 };
 
-                outputs.push(Self::activate(output));
+                outputs.push(output);
             }
 
             next_inputs = outputs;
@@ -55,22 +60,14 @@ impl NeuralNetwork {
         Some(next_inputs)
     }
 
-    fn activate(val: f64) -> f64 {
-        1.0 / (1.0 + (-1.0 * val).exp()) // sigmoid
-    }
-
     pub fn error(desired: Vec<f64>, guess: Vec<f64>) -> f64 {
         let mut sum = 0.0;
 
         for i in 0..desired.len() {
-            sum += Self::loss(desired[i], guess[i]);
+            sum += loss::squared(desired[i], guess[i]);
         }
 
         sum
-    }
-
-    fn loss(desired: f64, guess: f64) -> f64 {
-        (desired - guess).powi(2) * 0.5
     }
 }
 

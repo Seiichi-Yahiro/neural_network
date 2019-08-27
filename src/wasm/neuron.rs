@@ -16,7 +16,7 @@ impl Neuron {
         Self { weights }
     }
 
-    pub fn feed_forward(&self, inputs: &Vec<f64>) -> Option<f64> {
+    pub fn feed_forward(&self, inputs: &Vec<f64>, activate: &Fn(f64) -> f64) -> Option<f64> {
         if inputs.len() != self.weights.len() {
             return None;
         }
@@ -27,7 +27,7 @@ impl Neuron {
             sum += self.weights[i] * inputs[i];
         }
 
-        Some(sum)
+        Some(activate(sum))
     }
 
     /* pub fn train(&mut self, inputs: Vec<f64>, desired: f64) {

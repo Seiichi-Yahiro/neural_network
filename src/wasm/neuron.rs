@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::option::Option;
 
 pub struct Neuron {
     weights: Vec<f64>,
@@ -15,24 +16,18 @@ impl Neuron {
         Self { weights }
     }
 
-    pub fn new_pseudo(number_of_inputs: i32) -> Self {
-        let mut weights: Vec<f64> = vec![];
-
-        for _ in 0..number_of_inputs {
-            weights.push(1.0);
+    pub fn feed_forward(&self, inputs: &Vec<f64>) -> Option<f64> {
+        if inputs.len() != self.weights.len() {
+            return None;
         }
 
-        Self { weights }
-    }
-
-    pub fn feed_forward(&self, inputs: &Vec<f64>) -> f64 {
         let mut sum: f64 = 0.0;
 
         for i in 0..self.weights.len() {
             sum += self.weights[i] * inputs[i];
         }
 
-        sum
+        Some(sum)
     }
 
     /* pub fn train(&mut self, inputs: Vec<f64>, desired: f64) {

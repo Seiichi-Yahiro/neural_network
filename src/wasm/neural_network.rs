@@ -73,21 +73,14 @@ impl NeuralNetwork {
     }
 
     fn propagate_forward(&mut self, inputs: &Vec<f64>) -> Vec<f64> {
-        let mut next_inputs: Vec<f64> = inputs.clone();
-
-        for layer_neurons in self.neurons.iter_mut() {
-            let mut outputs: Vec<f64> = vec![];
-
-            for neuron in layer_neurons.iter_mut() {
-                let output = neuron.propagate_forward(&next_inputs, &activation::sigmoid);
-
-                outputs.push(output);
-            }
-
-            next_inputs = outputs;
-        }
-
-        next_inputs
+        self.neurons
+            .iter_mut()
+            .fold(inputs.clone(), |next_inputs, layer| {
+                layer
+                    .iter_mut()
+                    .map(|neuron| neuron.propagate_forward(&next_inputs, &activation::sigmoid))
+                    .collect()
+            })
     }
 
     fn propagate_backwards(&mut self, expected: &Vec<f64>) {

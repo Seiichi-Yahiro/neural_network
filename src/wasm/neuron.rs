@@ -33,7 +33,7 @@ impl Neuron {
         }
     }
 
-    pub fn propagate_forward(&self, inputs: &Vec<f64>, activate: &dyn Fn(f64) -> f64) -> f64 {
+    pub fn propagate_forward(&self, inputs: &[f64], activate: &dyn Fn(f64) -> f64) -> f64 {
         if inputs.len() != self.weights.len() {
             panic!("Number of inputs doesn't match number of input neurons");
         }

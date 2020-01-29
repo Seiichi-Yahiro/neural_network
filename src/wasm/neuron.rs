@@ -1,24 +1,25 @@
 use rand::Rng;
+use wasm_bindgen::__rt::core::cell::RefCell;
 
 pub struct Neuron {
     pub weights: Vec<f64>,
     pub bias: f64,
-    pub last_output: Option<f64>,
+    pub last_output: RefCell<Option<f64>>,
     pub delta: f64,
 }
 
 impl Neuron {
     pub fn new(number_of_inputs: u32) -> Self {
-        let mut weights: Vec<f64> = vec![];
+        let mut rng = rand::thread_rng();
 
-        for _ in 0..number_of_inputs {
-            weights.push(rand::thread_rng().gen_range(-1.0, 1.0))
-        }
+        let weights: Vec<f64> = (0..number_of_inputs)
+            .map(|_| rng.gen_range(-1.0, 1.0))
+            .collect();
 
         Self {
             weights,
-            bias: rand::thread_rng().gen_range(-1.0, 1.0),
-            last_output: None,
+            bias: rng.gen_range(-1.0, 1.0),
+            last_output: RefCell::new(None),
             delta: 0.0,
         }
     }
@@ -27,24 +28,26 @@ impl Neuron {
         Self {
             weights,
             bias,
-            last_output: None,
+            last_output: RefCell::new(None),
             delta: 0.0,
         }
     }
 
-    pub fn propagate_forward(&mut self, inputs: &Vec<f64>, activate: &dyn Fn(f64) -> f64) -> f64 {
+    pub fn propagate_forward(&self, inputs: &Vec<f64>, activate: &dyn Fn(f64) -> f64) -> f64 {
         if inputs.len() != self.weights.len() {
             panic!("Number of inputs doesn't match number of input neurons");
         }
 
-        let mut sum: f64 = self.bias;
-
-        for i in 0..self.weights.len() {
-            sum += self.weights[i] * inputs[i];
-        }
+        let sum = self.bias
+            + self
+                .weights
+                .iter()
+                .zip(inputs)
+                .map(|(weight, input)| weight * input)
+                .sum::<f64>();
 
         let output = activate(sum);
-        self.last_output = Some(output);
+        *self.last_output.borrow_mut() = Some(output);
         output
     }
 }

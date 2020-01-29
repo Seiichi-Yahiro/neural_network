@@ -57,7 +57,7 @@ impl NeuralNetwork {
         }
     }
 
-    pub fn guess(&mut self, inputs: &Vec<f64>) -> Vec<f64> {
+    pub fn guess(&self, inputs: &Vec<f64>) -> Vec<f64> {
         self.propagate_forward(inputs)
     }
 
@@ -72,12 +72,12 @@ impl NeuralNetwork {
         }
     }
 
-    fn propagate_forward(&mut self, inputs: &Vec<f64>) -> Vec<f64> {
+    fn propagate_forward(&self, inputs: &Vec<f64>) -> Vec<f64> {
         self.neurons
-            .iter_mut()
+            .iter()
             .fold(inputs.clone(), |next_inputs, layer| {
                 layer
-                    .iter_mut()
+                    .iter()
                     .map(|neuron| neuron.propagate_forward(&next_inputs, &activation::sigmoid))
                     .collect()
             })
@@ -89,7 +89,7 @@ impl NeuralNetwork {
         for layer_index in (0..self.neurons.len()).rev() {
             if layer_index == self.neurons.len() - 1 {
                 for (neuron_index, neuron) in self.neurons[layer_index].iter_mut().enumerate() {
-                    let output = neuron.last_output.expect(last_output_error_msg);
+                    let output = neuron.last_output.borrow().expect(last_output_error_msg);
                     let error = loss::squared_derived(expected[neuron_index], output);
                     neuron.delta = error * activation::sigmoid_derived(output);
                 }
@@ -103,6 +103,7 @@ impl NeuralNetwork {
 
                     let output = self.neurons[layer_index][neuron_index]
                         .last_output
+                        .borrow()
                         .expect(last_output_error_msg);
 
                     self.neurons[layer_index][neuron_index].delta =
@@ -126,7 +127,7 @@ impl NeuralNetwork {
                 }
 
                 neuron.bias += learn_delta;
-                next_inputs.push(neuron.last_output.unwrap());
+                next_inputs.push(neuron.last_output.borrow().unwrap());
             }
 
             inputs = next_inputs;
@@ -181,7 +182,7 @@ mod tests {
             vec![(vec![0.2, 0.4], 0.3), (vec![0.6, 0.8], 0.7)],
             vec![(vec![0.1, 0.5], 1.0)],
         ];
-        let mut n = NeuralNetwork::load(load, 0.1);
+        let n = NeuralNetwork::load(load, 0.1);
         let output = n.guess(&vec![1.0, 0.0]);
 
         let h1 = sigmoid(1.0 * 0.2 + 0.0 * 0.4 + 0.3);

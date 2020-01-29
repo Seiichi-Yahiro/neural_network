@@ -12,7 +12,7 @@ pub struct TrainingResult {
 }
 
 impl NeuralNetwork {
-    pub fn new(layers: Vec<u32>, learning_constant: f64) -> Self {
+    pub fn new(layers: &[u32], learning_constant: f64) -> Self {
         if layers.contains(&0) {
             panic!("Can't create a neural network with a layer of 0 neurons!");
         }
@@ -34,13 +34,13 @@ impl NeuralNetwork {
         }
     }
 
-    pub fn load(layers: Vec<Vec<(Vec<f64>, f64)>>, learning_constant: f64) -> Self {
+    pub fn load(layers: &[Vec<(Vec<f64>, f64)>], learning_constant: f64) -> Self {
         let network = layers
-            .into_iter()
+            .iter()
             .map(|neurons| {
                 neurons
-                    .into_iter()
-                    .map(|(weights, bias)| Neuron::load(weights, bias))
+                    .iter()
+                    .map(|(weights, bias)| Neuron::load(weights, *bias))
                     .collect()
             })
             .collect();
@@ -55,7 +55,7 @@ impl NeuralNetwork {
         self.propagate_forward(inputs)
     }
 
-    pub fn train(&mut self, inputs: &Vec<f64>, expected: &Vec<f64>) -> TrainingResult {
+    pub fn train(&mut self, inputs: &[f64], expected: &[f64]) -> TrainingResult {
         let guess = self.propagate_forward(inputs);
         self.propagate_backwards(expected);
         self.update_weights(inputs);
@@ -77,7 +77,7 @@ impl NeuralNetwork {
             })
     }
 
-    fn propagate_backwards(&mut self, expected: &Vec<f64>) {
+    fn propagate_backwards(&mut self, expected: &[f64]) {
         let last_output_error_msg = "Cannot propagate backwards without forward propagating first!";
 
         for layer_index in (0..self.network.len()).rev() {
@@ -89,11 +89,12 @@ impl NeuralNetwork {
                 }
             } else {
                 for neuron_index in 0..self.network[layer_index].len() {
-                    let mut error = 0.0;
-
-                    for prev_layer_neuron in self.network[layer_index + 1].iter() {
-                        error += prev_layer_neuron.weights[neuron_index] * prev_layer_neuron.delta;
-                    }
+                    let error: f64 = self.network[layer_index + 1]
+                        .iter()
+                        .map(|prev_layer_neuron| {
+                            prev_layer_neuron.weights[neuron_index] * prev_layer_neuron.delta
+                        })
+                        .sum();
 
                     let output = self.network[layer_index][neuron_index]
                         .last_output
@@ -107,35 +108,38 @@ impl NeuralNetwork {
         }
     }
 
-    fn update_weights(&mut self, inputs: &Vec<f64>) {
-        let mut inputs = inputs.clone();
+    fn update_weights(&mut self, inputs: &[f64]) {
+        let learning_constant = self.learning_constant;
 
-        for layer in self.network.iter_mut() {
-            let mut next_inputs = vec![];
+        self.network
+            .iter_mut()
+            .fold(Vec::from(inputs), |inputs, layer| {
+                layer
+                    .iter_mut()
+                    .map(|neuron| {
+                        let learn_delta = learning_constant * neuron.delta;
 
-            for neuron in layer.iter_mut() {
-                let learn_delta = self.learning_constant * neuron.delta;
+                        neuron
+                            .weights
+                            .iter_mut()
+                            .enumerate()
+                            .for_each(|(weight_index, weight)| {
+                                *weight += learn_delta * inputs[weight_index];
+                            });
 
-                for (weight_index, weight) in neuron.weights.iter_mut().enumerate() {
-                    *weight += learn_delta * inputs[weight_index];
-                }
-
-                neuron.bias += learn_delta;
-                next_inputs.push(neuron.last_output.borrow().unwrap());
-            }
-
-            inputs = next_inputs;
-        }
+                        neuron.bias += learn_delta;
+                        neuron.last_output.borrow().unwrap()
+                    })
+                    .collect()
+            });
     }
 
-    fn error(expected: &Vec<f64>, guess: &Vec<f64>) -> f64 {
-        let mut sum = 0.0;
-
-        for i in 0..expected.len() {
-            sum += loss::squared(expected[i], guess[i]);
-        }
-
-        sum
+    fn error(expected: &[f64], guess: &[f64]) -> f64 {
+        expected
+            .iter()
+            .zip(guess)
+            .map(|(expected, guess)| loss::squared(*expected, *guess))
+            .sum()
     }
 }
 
@@ -147,17 +151,18 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut n = NeuralNetwork::new(vec![2, 2, 1], 1.0);
+        let mut rng = rand::thread_rng();
+        let mut n = NeuralNetwork::new(&[2, 2, 1], 1.0);
 
-        let data = vec![
-            (vec![1.0, 1.0], vec![0.0]),
-            (vec![-1.0, -1.0], vec![0.0]),
-            (vec![1.0, -1.0], vec![1.0]),
-            (vec![-1.0, 1.0], vec![1.0]),
+        let data = [
+            ([1.0, 1.0], [0.0]),
+            ([-1.0, -1.0], [0.0]),
+            ([1.0, -1.0], [1.0]),
+            ([-1.0, 1.0], [1.0]),
         ];
 
         for _ in 0..2000 {
-            let i = rand::thread_rng().gen_range(0, 4);
+            let i = rng.gen_range(0, 4);
             let (input, expected) = &data[i];
             let TrainingResult { guess, error } = n.train(input, expected);
             println!(
@@ -172,16 +177,16 @@ mod tests {
 
     #[test]
     fn test_forward_propagate() {
-        let load = vec![
+        let load = [
             vec![(vec![0.2, 0.4], 0.3), (vec![0.6, 0.8], 0.7)],
             vec![(vec![0.1, 0.5], 1.0)],
         ];
-        let n = NeuralNetwork::load(load, 0.1);
+        let n = NeuralNetwork::load(&load, 0.1);
         let output = n.guess(&[1.0, 0.0]);
 
         let h1 = sigmoid(1.0 * 0.2 + 0.0 * 0.4 + 0.3);
         let h2 = sigmoid(1.0 * 0.6 + 0.0 * 0.8 + 0.7);
         let o1 = sigmoid(h1 * 0.1 + h2 * 0.5 + 1.0);
-        assert_eq!(output[0], o1);
+        assert!((output[0] - o1).abs() < std::f64::EPSILON);
     }
 }

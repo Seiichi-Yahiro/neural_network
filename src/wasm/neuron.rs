@@ -24,9 +24,9 @@ impl Neuron {
         }
     }
 
-    pub fn load(weights: Vec<f64>, bias: f64) -> Self {
+    pub fn load(weights: &[f64], bias: f64) -> Self {
         Self {
-            weights,
+            weights: Vec::from(weights),
             bias,
             last_output: RefCell::new(None),
             delta: 0.0,
